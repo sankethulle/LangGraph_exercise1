@@ -104,14 +104,16 @@ def gauge_overall_sentiment(productReviewState: ProductReviewState)->dict:
 def execute_commended_or_not(productReviewState: ProductReviewState)->dict:
     response = llm_model.invoke(
         f"You are Product review assistant"
-        f"You have below three outputs from specialist agent with prons,cons and over all sentiment"
+        f"You have below outputs from all the specialist agent with prons,cons and over all sentiment"
+        f"Advantages:\n{productReviewState.pros}\n\n"
+        f"Disadvantages:\n{productReviewState.cons}\n\n"
         f"OVERALL sentiment:\n{productReviewState.sentiment}\n\n"
         f"OVERALL rating:\n{productReviewState.rating}\n\n"
         f"OVERALL sentiment_reason:\n{productReviewState.sentiment_reason}\n\n"
         f"now being EXPERT please return whether product is recommended or not recommended with the reason"
         f"if the productReviewState.rating is below 3 out of 5 then return false else true"
         f"Reply STRICTLY in this JSON format (no other text)"
-        f'{{"isRecommended": True/False, "recommendationReason": "2 to 3 lines explanation why this is not recommended considering input points"}}'
+        f'{{"isRecommended": True/False, "recommendationReason": "consider all the inputs provided to this agent and retuns 2 to 3 lines explanation why this is not recommended considering input points"}}'
     )   
     try:
         result = json.loads(response.content)
@@ -153,11 +155,15 @@ graph.add_node("execute_commended_or_not",execute_commended_or_not)
 graph.add_node("recommended_summary", recommended_summary)
 graph.add_node("not_recommended_summary", not_recommended_summary)
 
+# FAN-OUT
 graph.add_edge(START, "extract_pros")
+graph.add_edge(START, "extract_cons")
+graph.add_edge(START, "gauge_overall_sentiment")
 
-graph.add_edge("extract_pros", "extract_cons")
-graph.add_edge("extract_pros", "gauge_overall_sentiment")
+# FAN-IN
 
+graph.add_edge("extract_pros", "execute_commended_or_not")
+graph.add_edge("extract_cons", "execute_commended_or_not")
 graph.add_edge("gauge_overall_sentiment", "execute_commended_or_not")
 
 graph.add_conditional_edges(
